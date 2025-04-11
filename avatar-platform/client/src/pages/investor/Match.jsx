@@ -20,6 +20,7 @@ import {
   Snackbar,
   Alert,
   useTheme,
+  TextField, // Added TextField to the imports
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import {
@@ -49,7 +50,7 @@ import {
 import "stream-chat-react/dist/css/index.css";
 import { StreamChat } from "stream-chat";
 
-import Navigation from "../../components/Navigation";
+import Navigation from "../../components/Navigation"; // Fixed import path
 import { useAuth } from "../../context/AuthContext";
 import {
   getMatches,

@@ -47,8 +47,8 @@ import {
   GitHub as GitHubIcon,
 } from "@mui/icons-material";
 
-import Navigation from "../components/common/Navigation";
-import SmartContractCard from "../components/common/SmartContractCard";
+import Navigation from "../../components/Navigation";
+import SmartContractCard from "../../components/SmartContractCard";
 import { useAuth } from "../../context/AuthContext";
 import { getUserById } from "../../services/userService";
 import { requestMatch, getMatchStatus } from "../../services/matchService";

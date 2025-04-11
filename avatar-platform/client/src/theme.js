@@ -1,6 +1,8 @@
+import { createTheme } from '@mui/material/styles';
+
 // Theme configuration based on the provided UI images
-const theme = {
-  colors: {
+const theme = createTheme({
+  palette: {
     primary: {
       main: "#FFEB3B", // Yellow from the sticky notes/background
       light: "#FFF59D",
@@ -14,6 +16,41 @@ const theme = {
     background: {
       default: "#FFEB3B", // Yellow background
       paper: "#FFFFFF", // White sticky notes
+    },
+    text: {
+      primary: "#212121",
+      secondary: "#757575",
+      disabled: "#BDBDBD",
+      hint: "#9E9E9E",
+    },
+    error: {
+      main: "#F44336",
+    },
+    warning: {
+      main: "#FF9800",
+    },
+    info: {
+      main: "#2196F3",
+    },
+    success: {
+      main: "#4CAF50",
+    },
+  },
+  // Keep custom colors for components that might reference them
+  colors: {
+    primary: {
+      main: "#FFEB3B",
+      light: "#FFF59D",
+      dark: "#FBC02D",
+    },
+    secondary: {
+      main: "#E91E63",
+      light: "#F8BBD0",
+      dark: "#C2185B",
+    },
+    background: {
+      default: "#FFEB3B",
+      paper: "#FFFFFF",
       secondary: "#F06292", // Lighter pink
     },
     text: {
@@ -34,9 +71,7 @@ const theme = {
     success: {
       main: "#4CAF50",
     },
-    divider: "rgba(0, 0, 0, 0.12)",
   },
-  spacing: 8,
   typography: {
     fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
@@ -89,6 +124,6 @@ const theme = {
       },
     },
   },
-};
+});
 
 export default theme;

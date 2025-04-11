@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -37,7 +38,7 @@ import FreelancerProfile from "./pages/freelancer/Profile";
 import ContractDetails from "./pages/shared/ContractDetails";
 import ProfileView from "./pages/shared/ProfileView";
 import Chat from "./pages/shared/Chat";
-import NotFound from "./pages/shared/NotFound";
+import NotFound from "./pages/shared/NotFound"; // Fixed import for NotFound
 
 // Contexts
 import { AuthProvider, useAuth } from "./context/AuthContext";

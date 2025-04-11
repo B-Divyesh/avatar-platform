@@ -41,7 +41,7 @@ import {
   Search as SearchIcon,
 } from "@mui/icons-material";
 
-import Navigation from "../components/common/Navigation";
+import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
 import { getUserById } from "../../services/userService";
 import { getChatHistory, sendChatMessage, getMatches } from "../../services/matchService";

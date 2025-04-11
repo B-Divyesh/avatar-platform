@@ -47,7 +47,7 @@ import {
   Verified as SuccessIcon,
 } from "@mui/icons-material";
 
-import Navigation from "../components/common/Navigation";
+import Navigation from "../../components/Navigation";
 import { useAuth } from "../../context/AuthContext";
 import {
   updateProfile,
