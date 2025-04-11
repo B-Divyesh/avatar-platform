@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#FFEB3B" />
+    <meta
+      name="description"
+      content="Avatar - The decentralized platform connecting freelancers and investors with blockchain technology"
+    />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Roboto font for Material UI -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap"
+    />
+
+    <!-- Font Icons -->
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+
+    <title>Avatar Platform</title>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: "Roboto", sans-serif;
+        background-color: #ffeb3b;
+      }
+
+      #root {
+        display: flex;
+        flex-direction: column;
+        min-height: 100vh;
+      }
+
+      /* Loading spinner */
+      .loading-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #ffeb3b;
+      }
+
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 5px solid rgba(233, 30, 99, 0.3);
+        border-radius: 50%;
+        border-top-color: #e91e63;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Holographic effect for smart contracts */
+      .holographic-effect {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .holographic-effect::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(
+          45deg,
+          rgba(255, 255, 255, 0.1) 0%,
+          rgba(255, 255, 255, 0.5) 50%,
+          rgba(255, 255, 255, 0.1) 100%
+        );
+        background-size: 200% 200%;
+        animation: holographic 5s ease infinite;
+        pointer-events: none;
+      }
+
+      @keyframes holographic {
+        0% {
+          background-position: 0% 0%;
+        }
+        50% {
+          background-position: 100% 100%;
+        }
+        100% {
+          background-position: 0% 0%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root">
+      <!-- Loading spinner (displays until React loads) -->
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+      </div>
+    </div>
+
+    <!-- Script to initialize Ethereum provider if MetaMask is installed -->
+    <script>
+      window.addEventListener("load", async () => {
+        // Check if Web3 is injected by MetaMask
+        if (typeof window.ethereum !== "undefined") {
+          console.log("MetaMask is installed!");
+        } else {
+          console.log(
+            "MetaMask not detected. Please install MetaMask for full functionality."
+          );
+        }
+      });
+    </script>
+  </body>
+</html>
