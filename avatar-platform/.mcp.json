@@ -10,6 +10,36 @@
           "--access-token", 
           "sbp_91b64b15819c02136579ee622090ddba4eb689ce"
         ]
+      },
+      "powerpoint": {
+        "command": "cmd",
+        "args": [
+          "/c", 
+          "npx", 
+          "-y", 
+          "@avatar/mcp-server-powerpoint@latest", 
+          "--app-path", 
+          "C:\\Program Files\\Microsoft Office\\root\\Office16\\POWERPNT.EXE"
+        ],
+        "fallbackPaths": [
+          "C:\\Program Files (x86)\\Microsoft Office\\root\\Office16\\POWERPNT.EXE",
+          "C:\\Program Files\\Microsoft Office\\Office16\\POWERPNT.EXE",
+          "/Applications/Microsoft PowerPoint.app/Contents/MacOS/Microsoft PowerPoint",
+          "/usr/bin/libreoffice",
+          "C:\\LibreOffice\\program\\soffice.exe"
+        ]
+      }
+    },
+    "appSettings": {
+      "preferredPresentationApp": "powerpoint",
+      "fallbackToLibreOffice": true,
+      "tempDirectory": "${HOME}/Documents/AvatarPresentations",
+      "autoSave": true
+    },
+    "api": {
+      "gemini": {
+        "enabled": true,
+        "useApiKey": "${REACT_APP_GEMINI_API_KEY}"
       }
     }
   }
