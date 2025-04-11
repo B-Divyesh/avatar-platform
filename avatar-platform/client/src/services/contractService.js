@@ -18,6 +18,8 @@ export const getContractInstance = async () => {
     }
 
     await window.ethereum.request({ method: "eth_requestAccounts" });
+    
+    // Fix: Use Web3Provider instead of BrowserProvider for ethers v5
     const provider = new ethers.providers.Web3Provider(window.ethereum);
     const signer = provider.getSigner();
 
@@ -76,6 +78,7 @@ export const createContract = async (contractData) => {
         const termsIpfsUri = `ipfs://terms-${dbContract.id}`;
 
         // Create contract on blockchain
+        // Fix: Use utils.parseEther instead of direct parseEther for ethers v5
         const tx = await contract.createContract(
           contractData.freelancerWalletAddress,
           termsIpfsUri,

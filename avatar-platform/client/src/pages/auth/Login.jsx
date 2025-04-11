@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Box,
@@ -68,7 +68,7 @@ const GoogleButton = styled(Button)(({ theme }) => ({
 const Login = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { loginWithEmail, loginWithGoogle, connectWallet } = useAuth();
+  const { loginWithEmail, loginWithGoogle, currentUser, loading: authLoading, authInitialized } = useAuth();
 
   // State
   const [email, setEmail] = useState("");
@@ -76,6 +76,18 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [success, setSuccess] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    console.log("Login page - Current user:", currentUser);
+    console.log("Login page - Auth initialized:", authInitialized);
+    
+    if (authInitialized && currentUser) {
+      console.log("User authenticated, redirecting to:", currentUser.userType);
+      navigate(currentUser.userType === "investor" ? "/investor" : "/freelancer");
+    }
+  }, [currentUser, navigate, authInitialized]);
 
   // Handle email login
   const handleEmailLogin = async (e) => {
@@ -90,18 +102,18 @@ const Login = () => {
       setError("");
       setLoading(true);
 
+      console.log("Attempting login with:", email);
       const response = await loginWithEmail(email, password);
+      console.log("Login response:", response);
 
-      // Navigate based on user type
-      if (response?.user?.user_metadata?.user_type === "investor") {
-        navigate("/investor");
-      } else {
-        navigate("/freelancer");
+      if (response?.session) {
+        setSuccess("Login successful! Redirecting...");
       }
+      
+      // Navigation will happen in the useEffect above when currentUser updates
     } catch (err) {
       console.error("Login error:", err);
-      setError("Failed to sign in. Please check your credentials.");
-    } finally {
+      setError(err.message || "Failed to sign in. Please check your credentials.");
       setLoading(false);
     }
   };
@@ -113,14 +125,41 @@ const Login = () => {
       setLoading(true);
 
       await loginWithGoogle();
+      setSuccess("Redirecting to Google for authentication...");
 
-      // Navigation happens automatically via auth state change
+      // Navigation happens automatically via auth state change or redirect
     } catch (err) {
       console.error("Google login error:", err);
       setError("Failed to sign in with Google. Please try again.");
       setLoading(false);
     }
   };
+
+  // Don't render the login page if we're already checking auth
+  if (!authInitialized) {
+    return (
+      <PageContainer>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>Initializing...</Typography>
+        </Box>
+      </PageContainer>
+    );
+  }
+
+  // Don't show login if user is already logged in
+  if (currentUser) {
+    return (
+      <PageContainer>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>
+            Already logged in. Redirecting...
+          </Typography>
+        </Box>
+      </PageContainer>
+    );
+  }
 
   return (
     <PageContainer>
@@ -150,6 +189,12 @@ const Login = () => {
           </Alert>
         )}
 
+        {success && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {success}
+          </Alert>
+        )}
+
         <form onSubmit={handleEmailLogin}>
           <TextField
             label="Email"
@@ -160,6 +205,7 @@ const Login = () => {
             margin="normal"
             variant="outlined"
             required
+            disabled={loading || authLoading}
           />
 
           <TextField
@@ -171,12 +217,14 @@ const Login = () => {
             margin="normal"
             variant="outlined"
             required
+            disabled={loading || authLoading}
             InputProps={{
               endAdornment: (
                 <IconButton
                   aria-label="toggle password visibility"
                   onClick={() => setShowPassword(!showPassword)}
                   edge="end"
+                  disabled={loading || authLoading}
                 >
                   {showPassword ? <VisibilityOffIcon /> : <VisibilityIcon />}
                 </IconButton>
@@ -201,7 +249,7 @@ const Login = () => {
             variant="contained"
             fullWidth
             size="large"
-            disabled={loading}
+            disabled={loading || authLoading}
             sx={{
               mt: 2,
               mb: 3,
@@ -210,7 +258,7 @@ const Login = () => {
               "&:hover": { bgcolor: theme.colors.secondary.dark },
             }}
           >
-            {loading ? (
+            {loading || authLoading ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
               "Sign In"
@@ -229,7 +277,7 @@ const Login = () => {
           size="large"
           startIcon={<GoogleIcon />}
           onClick={handleGoogleLogin}
-          disabled={loading}
+          disabled={loading || authLoading}
         >
           Sign in with Google
         </GoogleButton>

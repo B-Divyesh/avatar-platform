@@ -9,8 +9,11 @@ const GEMINI_API_BASE_URL = "https://generativelanguage.googleapis.com/v1beta";
  */
 class GeminiService {
   constructor(apiKey) {
+    if (!apiKey) {
+      console.warn("No Gemini API key provided. Service will not work correctly.");
+    }
     this.apiKey = apiKey;
-    this.model = "models/gemini-1.5-pro"; // Default model, can be changed
+    this.model = "models/gemini-1.5-pro"; // Default model
   }
 
   /**
@@ -21,8 +24,12 @@ class GeminiService {
    */
   async generateText(prompt, options = {}) {
     try {
+      if (!this.apiKey) {
+        throw new Error("Gemini API key is not configured");
+      }
+      
       const url = `${GEMINI_API_BASE_URL}/${this.model}:generateContent?key=${this.apiKey}`;
-
+      
       const payload = {
         contents: [
           {

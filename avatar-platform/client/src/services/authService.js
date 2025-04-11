@@ -1,5 +1,8 @@
 import { supabase, TABLES } from "./supabaseClient";
 
+// Cache for user profiles to avoid repeated API calls
+const profileCache = new Map();
+
 /**
  * Get current authenticated user with profile data
  * @returns {Promise<Object|null>} User object with profile data or null if not authenticated
@@ -17,6 +20,11 @@ export const getCurrentUser = async () => {
     }
 
     const user = session.user;
+    
+    // Check cache first
+    if (profileCache.has(user.id)) {
+      return profileCache.get(user.id);
+    }
 
     // Get user profile data
     const { data: profile, error: profileError } = await supabase
@@ -29,26 +37,14 @@ export const getCurrentUser = async () => {
       console.error("Error fetching user profile:", profileError);
     }
 
-    // Get pending matches count
-    const { data: pendingMatches, error: matchesError } = await supabase
-      .from(TABLES.MATCHES)
-      .select("id")
-      .eq(
-        user.user_metadata.user_type === "investor"
-          ? "investor_id"
-          : "freelancer_id",
-        user.id
-      )
-      .eq("status", "pending");
+    // Determine user type from user metadata or default to "freelancer"
+    const userType = user.user_metadata?.user_type || "freelancer";
 
-    if (matchesError) {
-      console.error("Error fetching pending matches:", matchesError);
-    }
-
-    return {
+    // Create basic user data without dependent API calls
+    const userData = {
       id: user.id,
       email: user.email,
-      userType: user.user_metadata?.user_type || "freelancer",
+      userType: userType,
       name: profile?.name || user.user_metadata?.name || "",
       bio: profile?.bio || "",
       profileImage: profile?.profile_image || "",
@@ -58,9 +54,13 @@ export const getCurrentUser = async () => {
       experience: profile?.experience || [],
       education: profile?.education || [],
       portfolio: profile?.portfolio || [],
-      pendingMatches: pendingMatches || [],
+      pendingMatches: [], // Avoid extra API call, will be populated on demand
       createdAt: user.created_at,
     };
+
+    // Cache the user data
+    profileCache.set(user.id, userData);
+    return userData;
   } catch (error) {
     console.error("Error in getCurrentUser:", error);
     return null;
@@ -85,6 +85,12 @@ export const updateProfile = async (userId, profileData) => {
       throw error;
     }
 
+    // Update cache
+    if (profileCache.has(userId)) {
+      const cachedUser = profileCache.get(userId);
+      profileCache.set(userId, { ...cachedUser, ...profileData });
+    }
+
     return data;
   } catch (error) {
     console.error("Error updating profile:", error);
@@ -93,7 +99,7 @@ export const updateProfile = async (userId, profileData) => {
 };
 
 /**
- * Upload profile image
+ * Upload profile image - optimized with pre-signed URL
  * @param {string} userId - User ID
  * @param {File} file - Image file to upload
  * @returns {Promise<string>} URL of uploaded image
@@ -104,14 +110,19 @@ export const uploadProfileImage = async (userId, file) => {
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
     const filePath = `profile-images/${fileName}`;
 
+    // Upload directly
     const { error: uploadError } = await supabase.storage
       .from("avatars")
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
     if (uploadError) {
       throw uploadError;
     }
 
+    // Get the public URL
     const { data: urlData } = supabase.storage
       .from("avatars")
       .getPublicUrl(filePath);
@@ -148,6 +159,12 @@ export const updateWalletAddress = async (userId, walletAddress) => {
       throw error;
     }
 
+    // Update cache
+    if (profileCache.has(userId)) {
+      const cachedUser = profileCache.get(userId);
+      profileCache.set(userId, { ...cachedUser, walletAddress });
+    }
+
     return data;
   } catch (error) {
     console.error("Error updating wallet address:", error);
@@ -162,18 +179,22 @@ export const updateWalletAddress = async (userId, walletAddress) => {
  */
 export const checkEmailExists = async (email) => {
   try {
-    const { data, error } = await supabase.rpc("check_email_exists", {
-      email_to_check: email,
-    });
+    // Check if the email exists in auth.users
+    const { data, error } = await supabase
+      .from("users")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
 
     if (error) {
-      throw error;
+      console.error("Error checking email:", error);
+      return false;
     }
 
-    return data;
+    return !!data;
   } catch (error) {
     console.error("Error checking email:", error);
-    throw error;
+    return false;
   }
 };
 

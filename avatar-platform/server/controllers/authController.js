@@ -1,150 +1,26 @@
-const { createClient } = require('@supabase/supabase-js');
-const config = require('../config/config');
-const StreamChat = require('stream-chat').StreamChat;
-
-// Create Supabase client
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey);
-
-// Create Stream Chat client
-const streamClient = new StreamChat(
-  config.streamChat.apiKey,
-  config.streamChat.apiSecret
-);
-
-/**
- * Get current user profile data
- */
-const getCurrentUser = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    
-    // Get user profile data
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (profileError && profileError.code !== 'PGRST116') {
-      throw profileError;
-    }
-    
-    // Get pending matches count
-    const userType = req.user.user_metadata.user_type;
-    const matchColumn = userType === 'investor' ? 'investor_id' : 'freelancer_id';
-    
-    const { data: pendingMatches, error: matchesError } = await supabase
-      .from('matches')
-      .select('id')
-      .eq(matchColumn, userId)
-      .eq('status', 'pending');
-    
-    if (matchesError) {
-      throw matchesError;
-    }
-    
-    // Prepare response
-    const userResponse = {
-      id: userId,
-      email: req.user.email,
-      userType: userType || 'freelancer',
-      name: profile?.name || req.user.user_metadata?.name || '',
-      bio: profile?.bio || '',
-      profileImage: profile?.profile_image || '',
-      walletAddress: profile?.wallet_address || '',
-      skills: profile?.skills || [],
-      industries: profile?.industries || [],
-      experience: profile?.experience || [],
-      education: profile?.education || [],
-      portfolio: profile?.portfolio || [],
-      pendingMatches: pendingMatches || [],
-      createdAt: req.user.created_at,
-    };
-    
-    res.status(200).json(userResponse);
-  } catch (error) {
-    console.error('Error in getCurrentUser:', error);
-    res.status(500).json({ error: 'Failed to get current user' });
-  }
-};
-
-/**
- * Update user profile
- */
-const updateProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const profileData = req.body;
-    
-    // Validate input
-    if (!profileData) {
-      return res.status(400).json({ error: 'Profile data is required' });
-    }
-    
-    // Update profile
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({ id: userId, ...profileData, updated_at: new Date() })
-      .select()
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    res.status(200).json(data);
-  } catch (error) {
-    console.error('Error updating profile:', error);
-    res.status(500).json({ error: 'Failed to update profile' });
-  }
-};
-
-/**
- * Update user wallet address
- */
-const updateWalletAddress = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { walletAddress } = req.body;
-    
-    // Validate input
-    if (!walletAddress) {
-      return res.status(400).json({ error: 'Wallet address is required' });
-    }
-    
-    // Update wallet address
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({
-        id: userId,
-        wallet_address: walletAddress,
-        updated_at: new Date()
-      })
-      .select()
-      .single();
-    
-    if (error) {
-      throw error;
-    }
-    
-    res.status(200).json(data);
-  } catch (error) {
-    console.error('Error updating wallet address:', error);
-    res.status(500).json({ error: 'Failed to update wallet address' });
-  }
-};
+import { supabase } from "../services/supabaseClient";
 
 /**
  * Register a new user
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
  */
-const register = async (req, res) => {
+export const register = async (req, res) => {
   try {
     const { email, password, userType } = req.body;
     
     // Validate input
     if (!email || !password || !userType) {
       return res.status(400).json({ 
-        error: 'Email, password, and user type are required' 
+        error: 'Email, password, and user type are required'
+      });
+    }
+
+    // Validate user type
+    if (!['investor', 'freelancer'].includes(userType)) {
+      return res.status(400).json({ 
+        error: 'User type must be either "investor" or "freelancer"' 
       });
     }
     
@@ -153,6 +29,7 @@ const register = async (req, res) => {
       .rpc('check_email_exists', { email_to_check: email });
     
     if (checkError) {
+      console.error('Error checking email existence:', checkError);
       throw checkError;
     }
     
@@ -160,7 +37,7 @@ const register = async (req, res) => {
       return res.status(400).json({ error: 'Email already exists' });
     }
     
-    // Register user
+    // Register user with Supabase
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -172,40 +49,52 @@ const register = async (req, res) => {
     });
     
     if (error) {
+      console.error('Supabase signup error:', error);
       throw error;
     }
     
-    // Create Stream Chat user
+    // Initialize profile in database
     try {
-      await streamClient.upsertUser({
-        id: data.user.id,
-        name: email.split('@')[0],
-        email: email,
-        role: userType,
-      });
-    } catch (streamError) {
-      console.error('Error creating Stream Chat user:', streamError);
-      // Continue with registration even if Stream Chat fails
+      await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          name: '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+    } catch (profileError) {
+      console.error('Error creating initial profile:', profileError);
+      // Continue with registration process
     }
     
+    // Determine if email confirmation is required
+    const emailConfirmRequired = !data.session;
+    
     res.status(201).json({
-      message: 'User registered successfully',
+      message: emailConfirmRequired 
+        ? 'Registration successful. Please check your email to confirm your account.'
+        : 'User registered successfully',
       user: {
         id: data.user.id,
         email: data.user.email,
         userType: data.user.user_metadata.user_type,
-      }
+      },
+      emailConfirmRequired
     });
   } catch (error) {
     console.error('Error registering user:', error);
-    res.status(500).json({ error: 'Failed to register user' });
+    res.status(500).json({ error: 'Failed to register user', message: error.message });
   }
 };
 
 /**
  * Login a user
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
  */
-const login = async (req, res) => {
+export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     
@@ -214,104 +103,100 @@ const login = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
     
-    // Login user
+    // Login with Supabase
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
     
     if (error) {
-      throw error;
+      console.error('Login error:', error);
+      return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    // Get profile data
-    const { data: profile } = await supabase
+    // Get user profile
+    const { data: profileData, error: profileError } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', data.user.id)
       .single();
-    
-    // Generate Stream Chat token
-    const streamToken = streamClient.createToken(data.user.id);
+      
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('Error fetching profile:', profileError);
+    }
     
     res.status(200).json({
-      token: data.session.access_token,
-      refreshToken: data.session.refresh_token,
+      message: 'Login successful',
       user: {
         id: data.user.id,
         email: data.user.email,
         userType: data.user.user_metadata.user_type,
-        name: profile?.name || '',
-        profileImage: profile?.profile_image || '',
+        name: profileData?.name || '',
+        profileImage: profileData?.profile_image || '',
       },
-      streamToken,
+      token: data.session.access_token,
     });
   } catch (error) {
     console.error('Error logging in:', error);
-    res.status(401).json({ error: 'Invalid credentials' });
+    res.status(500).json({ error: 'Failed to login', message: error.message });
   }
 };
 
 /**
- * Reset password request
+ * Get the current user
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
  */
-const requestPasswordReset = async (req, res) => {
+export const getCurrentUser = async (req, res) => {
   try {
-    const { email } = req.body;
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     
-    // Validate input
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
+    if (sessionError || !session) {
+      return res.status(401).json({ error: 'Not authenticated' });
     }
     
-    // Send reset password email
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${process.env.CLIENT_URL}/reset-password`,
+    const user = session.user;
+    
+    // Get user profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+      
+    if (profileError && profileError.code !== 'PGRST116') {
+      console.error('Error fetching profile:', profileError);
+    }
+    
+    res.status(200).json({
+      id: user.id,
+      email: user.email,
+      userType: user.user_metadata?.user_type || 'freelancer',
+      name: profileData?.name || user.user_metadata?.name || '',
+      bio: profileData?.bio || '',
+      profileImage: profileData?.profile_image || '',
+      walletAddress: profileData?.wallet_address || '',
+      skills: profileData?.skills || [],
+      industries: profileData?.industries || [],
+      experience: profileData?.experience || [],
+      education: profileData?.education || [],
+      portfolio: profileData?.portfolio || [],
+      createdAt: user.created_at,
     });
-    
-    if (error) {
-      throw error;
-    }
-    
-    res.status(200).json({ message: 'Password reset email sent' });
   } catch (error) {
-    console.error('Error requesting password reset:', error);
-    res.status(500).json({ error: 'Failed to send password reset email' });
+    console.error('Error getting current user:', error);
+    res.status(500).json({ error: 'Failed to get user', message: error.message });
   }
 };
 
 /**
- * Reset password
+ * Logout a user
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
  */
-const resetPassword = async (req, res) => {
-  try {
-    const { password } = req.body;
-    
-    // Validate input
-    if (!password) {
-      return res.status(400).json({ error: 'New password is required' });
-    }
-    
-    // Update password
-    const { error } = await supabase.auth.updateUser({
-      password,
-    });
-    
-    if (error) {
-      throw error;
-    }
-    
-    res.status(200).json({ message: 'Password updated successfully' });
-  } catch (error) {
-    console.error('Error resetting password:', error);
-    res.status(500).json({ error: 'Failed to reset password' });
-  }
-};
-
-/**
- * Logout user
- */
-const logout = async (req, res) => {
+export const logout = async (req, res) => {
   try {
     const { error } = await supabase.auth.signOut();
     
@@ -322,17 +207,62 @@ const logout = async (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error logging out:', error);
-    res.status(500).json({ error: 'Failed to logout' });
+    res.status(500).json({ error: 'Failed to logout', message: error.message });
   }
 };
 
-module.exports = {
-  getCurrentUser,
-  updateProfile,
-  updateWalletAddress,
-  register,
-  login,
-  requestPasswordReset,
-  resetPassword,
-  logout,
+/**
+ * Reset password
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
+ */
+export const resetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${process.env.CLIENT_URL}/reset-password`,
+    });
+    
+    if (error) {
+      throw error;
+    }
+    
+    res.status(200).json({ message: 'Password reset email sent' });
+  } catch (error) {
+    console.error('Error sending reset password email:', error);
+    res.status(500).json({ error: 'Failed to send reset email', message: error.message });
+  }
+};
+
+/**
+ * Update password
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ * @returns {Promise<void>}
+ */
+export const updatePassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    
+    if (!password) {
+      return res.status(400).json({ error: 'New password is required' });
+    }
+    
+    const { error } = await supabase.auth.updateUser({ password });
+    
+    if (error) {
+      throw error;
+    }
+    
+    res.status(200).json({ message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Error updating password:', error);
+    res.status(500).json({ error: 'Failed to update password', message: error.message });
+  }
 };

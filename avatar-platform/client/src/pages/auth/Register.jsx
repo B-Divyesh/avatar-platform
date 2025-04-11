@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   Box,
@@ -100,7 +100,7 @@ const WalletButton = styled(Button)(({ theme }) => ({
 const Register = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { registerWithEmail, loginWithGoogle, connectWallet } = useAuth();
+  const { registerWithEmail, loginWithGoogle, connectWallet, currentUser, loading: authLoading } = useAuth();
 
   // State
   const [activeStep, setActiveStep] = useState(0);
@@ -114,6 +114,14 @@ const Register = () => {
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (currentUser) {
+      navigate(currentUser.userType === "investor" ? "/investor" : "/freelancer");
+    }
+  }, [currentUser, navigate]);
 
   // Steps for registration
   const steps = ["Account Type", "Your Details", "Connect Wallet"];
@@ -169,6 +177,7 @@ const Register = () => {
 
       setWalletConnected(true);
       setWalletAddress(address);
+      setSuccessMessage("Wallet connected successfully!");
     } catch (err) {
       console.error("Error connecting wallet:", err);
       setError(
@@ -186,13 +195,17 @@ const Register = () => {
       setLoading(true);
 
       // Register user with email
-      await registerWithEmail(email, password, userType);
+      const result = await registerWithEmail(email, password, userType);
+      console.log("Registration result:", result);
 
-      // Navigate based on user type
-      if (userType === "investor") {
-        navigate("/investor");
+      // If the registration requires email confirmation
+      if (!result.session) {
+        setSuccessMessage("Registration successful! Please check your email to confirm your account.");
+        // Navigate after a delay to give user time to read the message
+        setTimeout(() => navigate("/login"), 5000);
       } else {
-        navigate("/freelancer");
+        // If immediate login, navigation happens in the useEffect above
+        setSuccessMessage("Registration successful!");
       }
     } catch (err) {
       console.error("Registration error:", err);
@@ -210,13 +223,25 @@ const Register = () => {
 
       await loginWithGoogle();
 
-      // Navigation happens automatically via auth state change
+      // Navigation happens automatically via auth state change in useEffect
     } catch (err) {
       console.error("Google login error:", err);
       setError("Failed to sign up with Google. Please try again.");
       setLoading(false);
     }
   };
+
+  // Don't render the register page if we're already checking auth
+  if (authLoading) {
+    return (
+      <PageContainer>
+        <Box sx={{ textAlign: 'center' }}>
+          <CircularProgress size={60} />
+          <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
+        </Box>
+      </PageContainer>
+    );
+  }
 
   // Render step content
   const getStepContent = (step) => {
@@ -474,6 +499,12 @@ const Register = () => {
         {error && (
           <Alert severity="error" sx={{ mb: 3 }}>
             {error}
+          </Alert>
+        )}
+
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3 }}>
+            {successMessage}
           </Alert>
         )}
 

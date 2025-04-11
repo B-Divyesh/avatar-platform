@@ -7,7 +7,13 @@ const supabaseUrl = `https://ounrkstfnbgtpydwlpww.supabase.co`; //process.env.SU
 const supabaseAnonKey = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91bnJrc3RmbmJndHB5ZHdscHd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTU4NTMsImV4cCI6MjA1OTkzMTg1M30.omioO3UEQXS_hb4Lnl8bw931qrCl2hA3aA1a_MO3x7E`//process.env.SUPABASE_ANON_KEY;
 
 // Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+});
 
 // Export types
 export const TABLES = {

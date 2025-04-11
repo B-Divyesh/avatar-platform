@@ -4,36 +4,40 @@
     "description": "Decentralized platform connecting freelancers and investors using blockchain and AI",
     "private": true,
     "scripts": {
-      "client": "cd client && npm start",
-      "server": "cd server && npm start",
-      "start": "concurrently \"npm run server\" \"npm run client\"",
-      "install-all": "npm install && cd client && npm install && cd ../server && npm install",
-      "build": "cd client && npm run build",
-      "test": "cd client && npm test",
-      "lint": "eslint ."
-    },
+        "client": "cd client && npm start",
+        "server": "cd server && npm start",
+        "start": "concurrently \"npm run server\" \"npm run client\"",
+        "install-all": "npm install && cd client && npm install && cd ../server && npm install && cd ../smart-contracts && npm install",
+        "build": "cd client && npm run build",
+        "test": "cd client && npm test",
+        "compile-contracts": "cd smart-contracts && npm run compile",
+        "test-contracts": "cd smart-contracts && npm run test",
+        "deploy-contracts:sepolia": "cd smart-contracts && npm run migrate:sepolia",
+        "verify-contracts:sepolia": "cd smart-contracts && npm run verify:sepolia",
+        "lint": "eslint ."
+      },
     "engines": {
-      "node": ">=16.0.0"
+        "node": ">=16.0.0"
     },
     "keywords": [
-      "blockchain",
-      "ethereum",
-      "smart-contracts",
-      "freelance",
-      "investment",
-      "ai",
-      "react"
+        "blockchain",
+        "ethereum",
+        "smart-contracts",
+        "freelance",
+        "investment",
+        "ai",
+        "react"
     ],
     "author": "",
     "license": "MIT",
     "devDependencies": {
-      "concurrently": "^8.0.1",
-      "eslint": "^8.38.0",
-      "eslint-config-prettier": "^8.8.0",
-      "eslint-plugin-react": "^7.32.2",
-      "prettier": "^2.8.7"
+        "concurrently": "^8.0.1",
+        "eslint": "^8.38.0",
+        "eslint-config-prettier": "^8.8.0",
+        "eslint-plugin-react": "^7.32.2",
+        "prettier": "^2.8.7"
     },
     "dependencies": {
-      "dotenv": "^16.0.3"
+        "dotenv": "^16.0.3"
     }
-  }
+}
