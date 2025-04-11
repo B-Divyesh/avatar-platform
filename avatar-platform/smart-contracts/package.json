@@ -1,0 +1,27 @@
+{
+    "name": "avatar-platform-contracts",
+    "version": "1.0.0",
+    "description": "Smart contracts for the Avatar Platform",
+    "scripts": {
+      "compile": "truffle compile",
+      "migrate": "truffle migrate",
+      "test": "truffle test",
+      "migrate:sepolia": "truffle migrate --network sepolia",
+      "migrate:goerli": "truffle migrate --network goerli",
+      "migrate:mainnet": "truffle migrate --network mainnet",
+      "verify:sepolia": "truffle run verify AvatarContract --network sepolia",
+      "verify:goerli": "truffle run verify AvatarContract --network goerli",
+      "verify:mainnet": "truffle run verify AvatarContract --network mainnet"
+    },
+    "dependencies": {
+      "@openzeppelin/contracts": "^4.8.1",
+      "@truffle/hdwallet-provider": "^2.1.7"
+    },
+    "devDependencies": {
+      "@openzeppelin/test-helpers": "^0.5.16",
+      "dotenv": "^16.0.3",
+      "ganache-cli": "^6.12.2",
+      "truffle": "^5.7.9",
+      "truffle-plugin-verify": "^0.6.2"
+    }
+  }
