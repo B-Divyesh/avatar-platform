@@ -9,7 +9,6 @@ import {
   Divider,
   CircularProgress,
   Alert,
-  Grid,
   IconButton,
   useTheme,
 } from "@mui/material";
@@ -80,14 +79,10 @@ const Login = () => {
 
   // Redirect if already logged in
   useEffect(() => {
-    console.log("Login page - Current user:", currentUser);
-    console.log("Login page - Auth initialized:", authInitialized);
-    
-    if (authInitialized && currentUser) {
-      console.log("User authenticated, redirecting to:", currentUser.userType);
+    if (currentUser) {
       navigate(currentUser.userType === "investor" ? "/investor" : "/freelancer");
     }
-  }, [currentUser, navigate, authInitialized]);
+  }, [currentUser, navigate]);
 
   // Handle email login
   const handleEmailLogin = async (e) => {
@@ -101,19 +96,16 @@ const Login = () => {
     try {
       setError("");
       setLoading(true);
+      setSuccess("");
 
-      console.log("Attempting login with:", email);
-      const response = await loginWithEmail(email, password);
-      console.log("Login response:", response);
-
-      if (response?.session) {
-        setSuccess("Login successful! Redirecting...");
-      }
+      await loginWithEmail(email, password);
+      setSuccess("Login successful!");
       
-      // Navigation will happen in the useEffect above when currentUser updates
+      // Navigation will happen in the useEffect when currentUser updates
     } catch (err) {
       console.error("Login error:", err);
       setError(err.message || "Failed to sign in. Please check your credentials.");
+    } finally {
       setLoading(false);
     }
   };
@@ -123,11 +115,12 @@ const Login = () => {
     try {
       setError("");
       setLoading(true);
+      setSuccess("");
 
       await loginWithGoogle();
       setSuccess("Redirecting to Google for authentication...");
-
-      // Navigation happens automatically via auth state change or redirect
+      
+      // Google will redirect to the callback URL
     } catch (err) {
       console.error("Google login error:", err);
       setError("Failed to sign in with Google. Please try again.");
@@ -135,27 +128,13 @@ const Login = () => {
     }
   };
 
-  // Don't render the login page if we're already checking auth
+  // Show loading state while authentication is initializing
   if (!authInitialized) {
     return (
       <PageContainer>
         <Box sx={{ textAlign: 'center' }}>
           <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ mt: 2 }}>Initializing...</Typography>
-        </Box>
-      </PageContainer>
-    );
-  }
-
-  // Don't show login if user is already logged in
-  if (currentUser) {
-    return (
-      <PageContainer>
-        <Box sx={{ textAlign: 'center' }}>
-          <CircularProgress size={60} />
-          <Typography variant="h6" sx={{ mt: 2 }}>
-            Already logged in. Redirecting...
-          </Typography>
+          <Typography variant="h6" sx={{ mt: 2 }}>Loading...</Typography>
         </Box>
       </PageContainer>
     );
@@ -258,7 +237,7 @@ const Login = () => {
               "&:hover": { bgcolor: theme.colors.secondary.dark },
             }}
           >
-            {loading || authLoading ? (
+            {(loading || authLoading) ? (
               <CircularProgress size={24} color="inherit" />
             ) : (
               "Sign In"

@@ -9,7 +9,6 @@ import {
   Divider,
   CircularProgress,
   Alert,
-  Grid,
   IconButton,
   ToggleButtonGroup,
   ToggleButton,
@@ -21,7 +20,6 @@ import {
 import { styled } from "@mui/material/styles";
 import {
   Google as GoogleIcon,
-  AccountCircle as UserIcon,
   BusinessCenter as InvestorIcon,
   Computer as FreelancerIcon,
   ArrowBack as BackIcon,
@@ -32,6 +30,7 @@ import {
 } from "@mui/icons-material";
 
 import { useAuth } from "../../context/AuthContext";
+import { updateProfile } from "../../services/authService";
 
 // Styled components
 const PageContainer = styled(Box)(({ theme }) => ({
@@ -100,7 +99,7 @@ const WalletButton = styled(Button)(({ theme }) => ({
 const Register = () => {
   const theme = useTheme();
   const navigate = useNavigate();
-  const { registerWithEmail, loginWithGoogle, connectWallet, currentUser, loading: authLoading } = useAuth();
+  const { registerWithEmail, loginWithGoogle, connectWallet, currentUser, loading: authLoading, authInitialized } = useAuth();
 
   // State
   const [activeStep, setActiveStep] = useState(0);
@@ -196,20 +195,32 @@ const Register = () => {
 
       // Register user with email
       const result = await registerWithEmail(email, password, userType);
-      console.log("Registration result:", result);
 
-      // If the registration requires email confirmation
+      // If we have a session, update the profile with name
+      if (result.session && result.user) {
+        try {
+          // Update profile with name
+          await updateProfile(result.user.id, { 
+            name,
+            wallet_address: walletAddress
+          });
+        } catch (profileError) {
+          console.error("Error updating profile:", profileError);
+        }
+      }
+
+      // Show success message
       if (!result.session) {
         setSuccessMessage("Registration successful! Please check your email to confirm your account.");
-        // Navigate after a delay to give user time to read the message
-        setTimeout(() => navigate("/login"), 5000);
+        // Navigate after a delay
+        setTimeout(() => navigate("/login"), 3000);
       } else {
-        // If immediate login, navigation happens in the useEffect above
         setSuccessMessage("Registration successful!");
+        // Navigation will happen automatically via useEffect when currentUser updates
       }
     } catch (err) {
       console.error("Registration error:", err);
-      setError("Failed to register. " + (err.message || "Please try again."));
+      setError(err.message || "Failed to register. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -222,8 +233,7 @@ const Register = () => {
       setLoading(true);
 
       await loginWithGoogle();
-
-      // Navigation happens automatically via auth state change in useEffect
+      // Will redirect to Google OAuth
     } catch (err) {
       console.error("Google login error:", err);
       setError("Failed to sign up with Google. Please try again.");
@@ -231,8 +241,8 @@ const Register = () => {
     }
   };
 
-  // Don't render the register page if we're already checking auth
-  if (authLoading) {
+  // Show loading state while authentication is initializing
+  if (!authInitialized) {
     return (
       <PageContainer>
         <Box sx={{ textAlign: 'center' }}>
@@ -509,7 +519,7 @@ const Register = () => {
         )}
 
         <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-          {steps.map((label, index) => (
+          {steps.map((label) => (
             <Step key={label}>
               <StepLabel>{label}</StepLabel>
             </Step>

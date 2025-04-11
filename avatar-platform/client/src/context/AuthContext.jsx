@@ -19,17 +19,14 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        console.log("Checking user authentication...");
         setLoading(true);
         
         // Get session directly from Supabase
         const { data } = await supabase.auth.getSession();
-        console.log("Session data:", data);
         
         if (data.session) {
           try {
             const fullUser = await getCurrentUser();
-            console.log("Full user data:", fullUser);
             
             if (fullUser) {
               setCurrentUser(fullUser);
@@ -43,7 +40,6 @@ export const AuthProvider = ({ children }) => {
             setCurrentUser(null);
           }
         } else {
-          console.log("No active session found");
           setCurrentUser(null);
         }
       } catch (error) {
@@ -61,10 +57,9 @@ export const AuthProvider = ({ children }) => {
     // Set up Supabase auth listener
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log("Auth state changed:", event, session);
+        console.log("Auth state changed:", event);
         
         if (event === "SIGNED_IN" && session) {
-          setLoading(true);
           try {
             const fullUser = await getCurrentUser();
             if (fullUser) {
@@ -122,10 +117,6 @@ export const AuthProvider = ({ children }) => {
   const loginWithEmail = async (email, password) => {
     try {
       setLoading(true);
-      console.log("Logging in with email:", email);
-      
-      // Clear any existing session first to prevent conflicts
-      await supabase.auth.signOut();
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -133,17 +124,13 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error("Login error:", error);
         throw error;
       }
-
-      console.log("Login successful, data:", data);
       
-      // We don't need to set the user here, the auth state change listener will handle it
       return data;
     } catch (error) {
       console.error("Error logging in:", error);
-      setLoading(false);  // Make sure to set loading to false on error
+      setLoading(false);
       throw error;
     }
   };
@@ -151,11 +138,6 @@ export const AuthProvider = ({ children }) => {
   // Login with Google
   const loginWithGoogle = async () => {
     try {
-      console.log("Starting Google login...");
-      
-      // Clear any existing session first
-      await supabase.auth.signOut();
-      
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
@@ -164,11 +146,9 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error("Google login error:", error);
         throw error;
       }
       
-      console.log("Google login initiated, redirecting...");
       return data;
     } catch (error) {
       console.error("Error logging in with Google:", error);
@@ -180,10 +160,6 @@ export const AuthProvider = ({ children }) => {
   const registerWithEmail = async (email, password, userType) => {
     try {
       setLoading(true);
-      console.log("Registering with email:", email, "userType:", userType);
-      
-      // Clear any existing session first
-      await supabase.auth.signOut();
       
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -196,30 +172,13 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (error) {
-        console.error("Registration error:", error);
         throw error;
-      }
-
-      console.log("Registration result:", data);
-      
-      // If email confirmation is not required and we have a session, we can set the user
-      if (data.session) {
-        try {
-          const fullUser = await getCurrentUser();
-          if (fullUser) {
-            setCurrentUser(fullUser);
-          }
-        } catch (userError) {
-          console.error("Error getting user after registration:", userError);
-        }
-      } else {
-        console.log("Email confirmation required, no session yet");
       }
       
       return data;
     } catch (error) {
       console.error("Error registering:", error);
-      setLoading(false);  // Make sure to set loading to false on error
+      setLoading(false);
       throw error;
     } finally {
       setLoading(false);
@@ -230,16 +189,13 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       setLoading(true);
-      console.log("Logging out...");
       
       const { error } = await supabase.auth.signOut();
 
       if (error) {
-        console.error("Logout error:", error);
         throw error;
       }
 
-      console.log("Logout successful");
       setCurrentUser(null);
       setWalletConnected(false);
       setEthersProvider(null);

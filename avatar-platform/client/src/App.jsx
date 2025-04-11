@@ -6,9 +6,6 @@ import {
   Navigate,
 } from "react-router-dom";
 import { ThemeProvider, CssBaseline, CircularProgress, Box } from "@mui/material";
-import { StreamChat } from "stream-chat";
-import { ChatProvider } from "stream-chat-react";
-import "stream-chat-react/dist/css/index.css";
 import { Web3ReactProvider } from "@web3-react/core";
 import { ethers } from "ethers";
 
@@ -42,10 +39,6 @@ const ProfileView = lazy(() => import("./pages/shared/ProfileView"));
 const Chat = lazy(() => import("./pages/shared/Chat"));
 const NotFound = lazy(() => import("./pages/shared/NotFound"));
 
-// Create Stream Chat client
-const chatApiKey = process.env.REACT_APP_STREAM_API_KEY || "mp83mukd32jj";
-const chatClient = StreamChat.getInstance(chatApiKey);
-
 // Web3 provider getter
 function getLibrary(provider) {
   return new ethers.providers.Web3Provider(provider);
@@ -70,16 +63,16 @@ const LoadingFallback = () => {
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
-  const { currentUser, loading, authInitialized } = useAuth();
+  const { currentUser, authInitialized } = useAuth();
 
-  // Show loading only until auth is initialized
+  // If auth isn't initialized yet, show loading
   if (!authInitialized) {
     return <LoadingFallback />;
   }
 
-  // Once auth is initialized, we can make routing decisions
+  // If no user is logged in, redirect to login
   if (!currentUser) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
   return children;
@@ -87,24 +80,38 @@ const ProtectedRoute = ({ children }) => {
 
 // User type specific routes
 const UserTypeRoute = ({ children, requiredType }) => {
-  const { currentUser, loading, authInitialized } = useAuth();
+  const { currentUser, authInitialized } = useAuth();
 
-  // Show loading only until auth is initialized
+  // If auth isn't initialized yet, show loading
   if (!authInitialized) {
     return <LoadingFallback />;
   }
 
-  // Once auth is initialized, we can make routing decisions
+  // If no user is logged in, redirect to login
   if (!currentUser) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
+  // If user type doesn't match required type, redirect to appropriate home
   if (currentUser.userType !== requiredType) {
-    return (
-      <Navigate
-        to={currentUser.userType === "investor" ? "/investor" : "/freelancer"}
-      />
-    );
+    return <Navigate to={`/${currentUser.userType}`} replace />;
+  }
+
+  return children;
+};
+
+// Public Route - redirects authenticated users to their home page
+const PublicRoute = ({ children }) => {
+  const { currentUser, authInitialized } = useAuth();
+
+  // If auth isn't initialized yet, just render the component
+  if (!authInitialized) {
+    return children;
+  }
+
+  // If user is logged in, redirect to their home page
+  if (currentUser) {
+    return <Navigate to={`/${currentUser.userType}`} replace />;
   }
 
   return children;
@@ -118,10 +125,22 @@ function App() {
         <Router>
           <Suspense fallback={<LoadingFallback />}>
             <Routes>
-              {/* Auth Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
+              {/* Auth Routes - Public but will redirect if logged in */}
+              <Route path="/login" element={
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              } />
+              
+              <Route path="/register" element={
+                <PublicRoute>
+                  <Register />
+                </PublicRoute>
+              } />
+              
+              {/* Auth Callback - Special case */}
               <Route path="/auth/callback" element={<AuthCallback />} />
+              
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/forgot-password" element={<ResetPassword isForgot={true} />} />
 
@@ -263,8 +282,12 @@ function App() {
                 }
               />
 
-              {/* Redirect root to appropriate home */}
-              <Route path="/" element={<Navigate to="/login" />} />
+              {/* Redirect root to login if not logged in, or to appropriate home if logged in */}
+              <Route path="/" element={
+                <PublicRoute>
+                  <Navigate to="/login" replace />
+                </PublicRoute>
+              } />
 
               {/* 404 */}
               <Route path="*" element={<NotFound />} />
